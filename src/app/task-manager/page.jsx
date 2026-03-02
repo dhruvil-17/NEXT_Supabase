@@ -5,163 +5,261 @@ import { supabase } from "@/lib/supabase/supabaseClient";
 import { useRouter } from "next/navigation";
 
 export default function Tasks() {
-  const [newTask, setNewTask] = useState({ title: null, description: null });
-  const [newDescription, setNewDescription] = useState(null);
+  const router = useRouter();
+
   const [tasks, setTasks] = useState([]);
   const [session, setSession] = useState(null);
-  const router = useRouter();
+
+  const [loading, setLoading] = useState(true);
+  const [addingTask, setAddingTask] = useState(false);
+
+  const [newTask, setNewTask] = useState({
+    title: "",
+    description: "",
+  });
+
+  const [editing, setEditing] = useState({});
+  const [taskImage, setTaskImage] = useState(null);
+
+  
+
+  const handleUpload = async (file) => {
+    const ext = file.name.split(".").pop();
+    const filePath = `${Date.now()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("tasks-images")
+      .upload(filePath, file);
+
+    if (error) return null;
+
+    const { data } = supabase.storage
+      .from("tasks-images")
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
+
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const { data, error } = await supabase
-      .from("tasks")
-      .insert([{...newTask , email : session.user.email}])
-      .select()
-      .single();
+    setAddingTask(true);
 
-    if (error) {
-      console.log("Error addding task ", error.message);
-      return;
-    } else {
-      console.log("task added successfully");
+    let imageURL = null;
+
+    if (taskImage) {
+      imageURL = await handleUpload(taskImage);
     }
 
-    setNewTask({ title: null, description: null });
+    await supabase.from("tasks").insert([
+      {
+        ...newTask,
+        email: session.user.email,
+        image_url: imageURL,
+      },
+    ]);
+
+    setNewTask({ title: "", description: "" });
+    setTaskImage(null);
+    setAddingTask(false);
   };
+
+
 
   const fetchTasks = async () => {
-    const { data, error } = await supabase
+    setLoading(true);
+
+    const { data } = await supabase
       .from("tasks")
       .select("*")
-      .order("created_at", { ascending: true });
-    if (error) {
-      console.log("Error Fetching tasks ", error.message);
-      return;
-    } else {
-      console.log("tasks fetched successfully");
-    }
-    setTasks(data);
+      .order("created_at", { ascending: false });
+
+    setTasks(data || []);
+    setLoading(false);
   };
 
-  const deleteTask = async (id) => {
-    const { error } = await supabase.from("tasks").delete().eq("id", id);
+  
 
-    if (error) {
-      console.log("Error Deleting task ", error);
-      return;
-    } else {
-      console.log("deleted successfully");
-    }
+  const deleteTask = async (id) => {
+    await supabase.from("tasks").delete().eq("id", id);
   };
 
   const editTask = async (id) => {
-    const { error } = await supabase
+    await supabase
       .from("tasks")
-      .update({ description: newDescription })
+      .update({ description: editing[id] })
       .eq("id", id);
-    if (error) {
-      console.log("Error updating task ", error);
-      return;
-    } else {
-      console.log("task description updated successfully");
-    }
-    setNewDescription(null);
+
+    setEditing((prev) => ({ ...prev, [id]: "" }));
   };
+
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setSession(null);
     router.push("/");
   };
 
-    const init = async () => {
-    const { data } = await supabase.auth.getSession();
-
-    if (!data.session) {
-      router.replace("/");
-      return;
-    }
-
-    setSession(data.session);
-    await fetchTasks();
-  };
+ 
 
   useEffect(() => {
-  init();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_e, session) => {
+      setSession(session);
+      if (!session) router.push("/");
+    });
 
-}, []);
+    fetchTasks();
+
+    return () => subscription.unsubscribe();
+  }, [router]);
+
+  
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("tasks-channel")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        (payload) => {
+          if (payload.eventType === "INSERT")
+            setTasks((p) => [payload.new, ...p]);
+
+          if (payload.eventType === "UPDATE")
+            setTasks((p) =>
+              p.map((t) => (t.id === payload.new.id ? payload.new : t))
+            );
+
+          if (payload.eventType === "DELETE")
+            setTasks((p) => p.filter((t) => t.id !== payload.old.id));
+        }
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+ 
 
   return (
-    <>
-      <div className="app-container">
-        <h1 className="title">Task App</h1>
-        <button onClick={handleLogout}>Logout</button>
-        <form onSubmit={handleSubmit}>
-          <div className="task-form">
-            <input
-              type="text"
-              placeholder="Enter task title"
-              className="input-field"
-              onChange={(e) =>
-                setNewTask((prev) => ({ ...prev, title: e.target.value }))
-              }
-            />
+    <div className="min-h-screen bg-gray-100 p-6 flex justify-center">
+      <div className="w-full max-w-3xl">
 
-            <textarea
-              placeholder="Enter task description"
-              className="input-field"
-              rows="3"
-              onChange={(e) =>
-                setNewTask((prev) => ({ ...prev, description: e.target.value }))
-              }
-            />
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Task Manager</h1>
 
-            <button className="add-btn" type="submit">
-              Add Task
-            </button>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 text-white px-4 py-2 rounded-lg"
+          >
+            Logout
+          </button>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white p-6 rounded-xl shadow mb-6 space-y-3"
+        >
+          <input
+            placeholder="Task title"
+            value={newTask.title}
+            onChange={(e) =>
+              setNewTask((p) => ({ ...p, title: e.target.value }))
+            }
+            className="w-full border p-3 rounded-lg"
+          />
+
+          <textarea
+            placeholder="Task description"
+            value={newTask.description}
+            onChange={(e) =>
+              setNewTask((p) => ({ ...p, description: e.target.value }))
+            }
+            className="w-full border p-3 rounded-lg"
+          />
+
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) =>
+              e.target.files && setTaskImage(e.target.files[0])
+            }
+          />
+
+          <button className="bg-blue-600 text-white px-5 py-2 rounded-lg flex justify-center w-32">
+            {addingTask ? (
+              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              "Add Task"
+            )}
+          </button>
         </form>
 
-        <div>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {tasks.map((task, key) => (
-              <li
-                key={key}
-                style={{
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "1rem",
-                  marginBottom: "0.5rem",
-                }}
+        {/* TASK LIST */}
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-24 bg-gray-200 animate-pulse rounded-xl"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {tasks.map((task) => (
+              <div
+                key={task.id}
+                className="bg-white p-5 rounded-xl shadow"
               >
-                <div>
-                  <h3>Title : {task.title}</h3>
-                  <p>Description : {task.description}</p>
-                  <textarea
-                    placeholder="Updated Description..."
-                    onChange={(e) => setNewDescription(e.target.value)}
-                    className="border-2"
-                  ></textarea>
+                <h3 className="font-semibold text-lg">{task.title}</h3>
+                <p className="text-gray-600 mb-3">
+                  {task.description}
+                </p>
+
+                {task.image_url && (
+                  <img
+                    src={task.image_url}
+                    className="rounded-lg mb-3 max-h-60"
+                  />
+                )}
+
+                <textarea
+                  placeholder="Update description..."
+                  value={editing[task.id] || ""}
+                  onChange={(e) =>
+                    setEditing((p) => ({
+                      ...p,
+                      [task.id]: e.target.value,
+                    }))
+                  }
+                  className="w-full border p-2 rounded-lg mb-3"
+                />
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => editTask(task.id)}
+                    className="bg-yellow-500 text-white px-4 py-2 rounded-lg"
+                  >
+                    Update
+                  </button>
 
                   <button
-                    style={{ padding: "0.5rem 1rem", marginRight: "0.5rem" }}
-                    className="border-2 cursor-pointer"
-                    onClick={() => editTask(task.id)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="border-2 cursor-pointer"
-                    style={{ padding: "0.5rem 1rem" }}
                     onClick={() => deleteTask(task.id)}
+                    className="bg-red-500 text-white px-4 py-2 rounded-lg"
                   >
                     Delete
                   </button>
                 </div>
-              </li>
+              </div>
             ))}
-          </ul>
-        </div>
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }
