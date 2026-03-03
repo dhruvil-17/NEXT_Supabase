@@ -3,7 +3,7 @@
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
+import Link from "next/link"
 export default function Home() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
@@ -144,6 +144,11 @@ export default function Home() {
             {isSignUp ? "Sign In" : "Sign Up"}
           </button>
         </p>
+        <div className="flex justify-center">
+          <Link href="/forgot-password">
+          Forgot Password ?
+        </Link>
+        </div>
       </div>
     </div>
   );

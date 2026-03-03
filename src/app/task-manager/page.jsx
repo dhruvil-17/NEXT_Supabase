@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { useRouter } from "next/navigation";
-
+const PAGE_SIZE = 3;
 export default function Tasks() {
   const router = useRouter();
 
   const [tasks, setTasks] = useState([]);
   const [session, setSession] = useState(null);
-
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [addingTask, setAddingTask] = useState(false);
 
@@ -21,11 +21,9 @@ export default function Tasks() {
   const [editing, setEditing] = useState({});
   const [taskImage, setTaskImage] = useState(null);
 
-  
-
   const handleUpload = async (file) => {
     const ext = file.name.split(".").pop();
-    const filePath = `${Date.now()}.${ext}`;
+    const filePath = `${session.user.id}/${Date.now()}.${ext}`;
 
     const { error } = await supabase.storage
       .from("tasks-images")
@@ -40,8 +38,6 @@ export default function Tasks() {
     return data.publicUrl;
   };
 
-
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setAddingTask(true);
@@ -55,34 +51,34 @@ export default function Tasks() {
     await supabase.from("tasks").insert([
       {
         ...newTask,
+        user_id: session.user.id,
         email: session.user.email,
         image_url: imageURL,
       },
     ]);
-
+    await fetchTasks();
     setNewTask({ title: "", description: "" });
     setTaskImage(null);
     setAddingTask(false);
   };
 
-
-
   const fetchTasks = async () => {
     setLoading(true);
+    const offset = (page - 1) * PAGE_SIZE;
+    const { data, error } = await supabase.rpc("get_user_tasks", {
+      page_limit: PAGE_SIZE,
+      page_offset: offset,
+    });
 
-    const { data } = await supabase
-      .from("tasks")
-      .select("*")
-      .order("created_at", { ascending: false });
+    if (error) console.log(error);
 
     setTasks(data || []);
     setLoading(false);
   };
 
-  
-
   const deleteTask = async (id) => {
     await supabase.from("tasks").delete().eq("id", id);
+    await fetchTasks();
   };
 
   const editTask = async (id) => {
@@ -94,14 +90,10 @@ export default function Tasks() {
     setEditing((prev) => ({ ...prev, [id]: "" }));
   };
 
-
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/");
   };
-
- 
 
   useEffect(() => {
     const {
@@ -110,45 +102,49 @@ export default function Tasks() {
       setSession(session);
       if (!session) router.push("/");
     });
-
-    fetchTasks();
-
     return () => subscription.unsubscribe();
   }, [router]);
 
-  
-
   useEffect(() => {
+    if (!session) {
+      return;
+    }
     const channel = supabase
       .channel("tasks-channel")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tasks" },
         (payload) => {
-          if (payload.eventType === "INSERT")
+          if (payload.eventType === "INSERT") {
             setTasks((p) => [payload.new, ...p]);
-
-          if (payload.eventType === "UPDATE")
+          }
+          if (payload.eventType === "UPDATE") {
             setTasks((p) =>
-              p.map((t) => (t.id === payload.new.id ? payload.new : t))
+              p.map((t) => (t.id === payload.new.id ? payload.new : t)),
             );
+          }
 
-          if (payload.eventType === "DELETE")
+          if (payload.eventType === "DELETE") {
             setTasks((p) => p.filter((t) => t.id !== payload.old.id));
-        }
+          }
+        },
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Realtime Status : ", status);
+      });
 
     return () => supabase.removeChannel(channel);
-  }, []);
+  }, [session]);
 
- 
+  useEffect(() => {
+    if (session) {
+      fetchTasks();
+    }
+  }, [page, session]);
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 flex justify-center">
       <div className="w-full max-w-3xl">
-
-        {/* HEADER */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Task Manager</h1>
 
@@ -185,9 +181,8 @@ export default function Tasks() {
           <input
             type="file"
             accept="image/*"
-            onChange={(e) =>
-              e.target.files && setTaskImage(e.target.files[0])
-            }
+            onChange={(e) => e.target.files && setTaskImage(e.target.files[0])}
+            required
           />
 
           <button className="bg-blue-600 text-white px-5 py-2 rounded-lg flex justify-center w-32">
@@ -199,7 +194,6 @@ export default function Tasks() {
           </button>
         </form>
 
-        {/* TASK LIST */}
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -212,21 +206,16 @@ export default function Tasks() {
         ) : (
           <div className="space-y-4">
             {tasks.map((task) => (
-              <div
-                key={task.id}
-                className="bg-white p-5 rounded-xl shadow"
-              >
+              <div key={task.id} className="bg-white p-5 rounded-xl shadow">
                 <h3 className="font-semibold text-lg">{task.title}</h3>
-                <p className="text-gray-600 mb-3">
-                  {task.description}
-                </p>
+                <p className="text-gray-600 mb-3">{task.description}</p>
 
-                {task.image_url && (
+                {/* {task.image_url && (
                   <img
                     src={task.image_url}
                     className="rounded-lg mb-3 max-h-60"
                   />
-                )}
+                )} */}
 
                 <textarea
                   placeholder="Update description..."
@@ -257,6 +246,21 @@ export default function Tasks() {
                 </div>
               </div>
             ))}
+            <div className="flex align-middle justify-center gap-3.5 text-xl">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="bg-blue-400 px-4 text-white "
+              >
+                Prev
+              </button>
+              <p>Page no. : {page}</p>
+              {tasks.length==3 && <button
+                onClick={() => setPage((p) => p + 1)}
+                className="bg-blue-400 px-4 text-white "
+              >
+                Next
+              </button>}
+            </div>
           </div>
         )}
       </div>
