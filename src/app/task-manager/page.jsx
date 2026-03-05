@@ -19,6 +19,7 @@ export default function Tasks() {
   });
   const [editing, setEditing] = useState({});
   const [taskImage, setTaskImage] = useState(null);
+  const [search, setSearch] = useState("");
   const fileInputRef = useRef(null);
 
   const handleUpload = async (file) => {
@@ -70,6 +71,7 @@ export default function Tasks() {
 
     setAddingTask(false);
   };
+
   //fetch tasks handler
   const fetchTasks = async () => {
     setLoading(true);
@@ -77,6 +79,7 @@ export default function Tasks() {
     const { data, error } = await supabase.rpc("get_user_tasks", {
       page_limit: PAGE_SIZE,
       page_offset: offset,
+      search: search,
     });
 
     if (error) console.log(error);
@@ -154,7 +157,7 @@ export default function Tasks() {
     if (session) {
       fetchTasks();
     }
-  }, [page, session]);
+  }, [page, session, search]);
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 flex justify-center">
@@ -169,7 +172,9 @@ export default function Tasks() {
             Logout
           </button>
         </div>
-
+        <h1 className="text-xl font-bold text-center">
+          Welcome, {session.user.email}
+        </h1>
         <form
           onSubmit={handleSubmit}
           className="bg-white p-6 rounded-xl shadow mb-6 space-y-3"
@@ -196,6 +201,7 @@ export default function Tasks() {
             type="file"
             ref={fileInputRef}
             onChange={(e) => setTaskImage(e.target.files[0])}
+            className="border p-3 rounded-lg"
           />
 
           <button className="bg-blue-600 text-white px-5 py-2 rounded-lg flex justify-center w-32">
@@ -206,6 +212,14 @@ export default function Tasks() {
             )}
           </button>
         </form>
+        <div className="bg-white p-6 rounded-xl shadow mb-6 space-y-3">
+          <input
+            placeholder="Search tasks"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full border p-3 rounded-lg"
+          />
+        </div>
 
         {loading ? (
           <div className="space-y-4">
@@ -260,21 +274,27 @@ export default function Tasks() {
               </div>
             ))}
             <div className="flex align-middle justify-center gap-3.5 text-xl">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="bg-blue-400 px-4 text-white rounded-xl"
-              >
-                Prev
-              </button>
+              <div>
+                {page > 1 && (
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="bg-blue-400 px-4 text-white rounded-xl"
+                  >
+                    Prev
+                  </button>
+                )}
+              </div>
               <p>Page no. : {page}</p>
-              {tasks.length == 3 && (
-                <button
-                  onClick={() => setPage((p) => p + 1)}
-                  className="bg-blue-400 px-4 text-white rounded-xl "
-                >
-                  Next
-                </button>
-              )}
+              <div>
+                {tasks.length == 3 && (
+                  <button
+                    onClick={() => setPage((p) => p + 1)}
+                    className="bg-blue-400 px-4 text-white rounded-xl "
+                  >
+                    Next
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
