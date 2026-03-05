@@ -3,12 +3,13 @@
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link"
+import { FaGithub , FaGoogle } from "react-icons/fa";
+
+import Link from "next/link";
 export default function Home() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -53,13 +54,13 @@ export default function Home() {
     });
   };
   const loginWithGithub = async () => {
-  await supabase.auth.signInWithOAuth({
-    provider: "github",
-    options: {
-      redirectTo: "http://localhost:3000/auth/callback",
-    },
-  });
-};
+    await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: {
+        redirectTo: "http://localhost:3000/auth/callback",
+      },
+    });
+  };
 
   useEffect(() => {
     const {
@@ -74,13 +75,11 @@ export default function Home() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-gray-100 to-gray-200">
       <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl space-y-6">
-
         <h1 className="text-3xl font-bold text-center">
           {isSignUp ? "Create Account" : "Welcome Back"}
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-
           <input
             type="email"
             placeholder="Email"
@@ -113,7 +112,6 @@ export default function Home() {
           </button>
         </form>
 
-    
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-gray-200" />
           <span className="text-sm text-gray-400">OR</span>
@@ -123,31 +121,29 @@ export default function Home() {
         <button
           onClick={loginWithGoogle}
           disabled={loading}
-          className="w-full border py-3 rounded-lg hover:bg-gray-50 transition font-medium"
+          className="w-full border py-3 rounded-lg hover:bg-gray-50 transition font-medium flex justify-center gap-3"
         >
-          Continue with Google
+          Continue with Google <FaGoogle size={25}/>
         </button>
         <button
           onClick={loginWithGithub}
           disabled={loading}
-          className="w-full border py-3 rounded-lg hover:bg-gray-50 transition font-medium"
+          className="w-full border py-3 rounded-lg hover:bg-gray-50 transition font-medium flex justify-center gap-3"
         >
-          Continue with Github
+          Continue with Github <FaGithub size={25}/>
         </button>
 
         <p className="text-center text-sm">
           {isSignUp ? "Already have an account?" : "No account yet?"}
           <button
             onClick={() => setIsSignUp(!isSignUp)}
-            className="ml-2 text-blue-600 font-medium"
+            className="ml-2 text-blue-600 font-medium cursor-pointer"
           >
             {isSignUp ? "Sign In" : "Sign Up"}
           </button>
         </p>
         <div className="flex justify-center">
-          <Link href="/forgot-password">
-          Forgot Password ?
-        </Link>
+          <Link href="/forgot-password" className="text-blue-500">Forgot Password ?</Link>
         </div>
       </div>
     </div>

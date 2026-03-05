@@ -249,17 +249,19 @@ export default function Tasks() {
             <div className="flex align-middle justify-center gap-3.5 text-xl">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="bg-blue-400 px-4 text-white "
+                className="bg-blue-400 px-4 text-white rounded-xl"
               >
                 Prev
               </button>
               <p>Page no. : {page}</p>
-              {tasks.length==3 && <button
-                onClick={() => setPage((p) => p + 1)}
-                className="bg-blue-400 px-4 text-white "
-              >
-                Next
-              </button>}
+              {tasks.length == 3 && (
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  className="bg-blue-400 px-4 text-white rounded-xl "
+                >
+                  Next
+                </button>
+              )}
             </div>
           </div>
         )}
