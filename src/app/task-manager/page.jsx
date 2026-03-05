@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { useRouter } from "next/navigation";
 const PAGE_SIZE = 3;
+export const revalidate = 60
 export default function Tasks() {
   const router = useRouter();
 
