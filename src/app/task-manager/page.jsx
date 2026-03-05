@@ -57,6 +57,7 @@ export default function Tasks() {
         user_id: session.user.id,
         email: session.user.email,
         image_url: imageURL,
+        
       },
     ]);
 
@@ -172,9 +173,7 @@ export default function Tasks() {
             Logout
           </button>
         </div>
-        <h1 className="text-xl font-bold text-center">
-          Welcome, {session.user.email}
-        </h1>
+
         <form
           onSubmit={handleSubmit}
           className="bg-white p-6 rounded-xl shadow mb-6 space-y-3"
@@ -232,15 +231,24 @@ export default function Tasks() {
           </div>
         ) : (
           <div className="space-y-4">
+            {search && tasks.length == 0 && (
+              <div className="bg-white p-5 rounded-xl shadow">
+                <h1 className="text-center text-xl">No tasks Found</h1>
+              </div>
+            )}
+
             {tasks.map((task) => (
               <div key={task.id} className="bg-white p-5 rounded-xl shadow">
-                <h3 className="font-semibold text-lg">{task.title}</h3>
-                <p className="text-gray-600 mb-3">{task.description}</p>
+                <h3 className="font-semibold text-lg">Title : {task.title}</h3>
+                <p className="text-gray-600 mb-3">
+                  Description : {task.description}
+                </p>
 
                 {task.image_url && (
                   <img
                     src={task.image_url}
                     className="rounded-lg mb-3 max-h-60"
+                    alt="No Image Found"
                   />
                 )}
 
