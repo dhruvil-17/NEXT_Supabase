@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase/supabaseClient";
 import { useRouter } from "next/navigation";
 const PAGE_SIZE = 3;
@@ -13,14 +13,13 @@ export default function Tasks() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [addingTask, setAddingTask] = useState(false);
-
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
   });
-
   const [editing, setEditing] = useState({});
   const [taskImage, setTaskImage] = useState(null);
+  const fileInputRef = useRef(null);
 
   const handleUpload = async (file) => {
     const ext = file.name.split(".").pop();
@@ -39,8 +38,10 @@ export default function Tasks() {
     return data.publicUrl;
   };
 
+  //submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setAddingTask(true);
 
     let imageURL = null;
@@ -57,12 +58,19 @@ export default function Tasks() {
         image_url: imageURL,
       },
     ]);
+
     await fetchTasks();
+
     setNewTask({ title: "", description: "" });
     setTaskImage(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
     setAddingTask(false);
   };
-
+  //fetch tasks handler
   const fetchTasks = async () => {
     setLoading(true);
     const offset = (page - 1) * PAGE_SIZE;
@@ -77,6 +85,7 @@ export default function Tasks() {
     setLoading(false);
   };
 
+  //Delete handler
   const deleteTask = async (id) => {
     await supabase.from("tasks").delete().eq("id", id);
     await fetchTasks();
@@ -91,11 +100,13 @@ export default function Tasks() {
     setEditing((prev) => ({ ...prev, [id]: "" }));
   };
 
+  //logout handler
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/");
   };
 
+  //auth state change effect
   useEffect(() => {
     const {
       data: { subscription },
@@ -106,6 +117,7 @@ export default function Tasks() {
     return () => subscription.unsubscribe();
   }, [router]);
 
+  //realtime subscripton handler
   useEffect(() => {
     if (!session) {
       return;
@@ -137,6 +149,7 @@ export default function Tasks() {
     return () => supabase.removeChannel(channel);
   }, [session]);
 
+  //only fetch tasks after session
   useEffect(() => {
     if (session) {
       fetchTasks();
@@ -181,9 +194,8 @@ export default function Tasks() {
 
           <input
             type="file"
-            accept="image/*"
-            onChange={(e) => e.target.files && setTaskImage(e.target.files[0])}
-            required
+            ref={fileInputRef}
+            onChange={(e) => setTaskImage(e.target.files[0])}
           />
 
           <button className="bg-blue-600 text-white px-5 py-2 rounded-lg flex justify-center w-32">
@@ -211,12 +223,12 @@ export default function Tasks() {
                 <h3 className="font-semibold text-lg">{task.title}</h3>
                 <p className="text-gray-600 mb-3">{task.description}</p>
 
-                {/* {task.image_url && (
+                {task.image_url && (
                   <img
                     src={task.image_url}
                     className="rounded-lg mb-3 max-h-60"
                   />
-                )} */}
+                )}
 
                 <textarea
                   placeholder="Update description..."
