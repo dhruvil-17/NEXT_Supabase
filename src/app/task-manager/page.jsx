@@ -160,7 +160,7 @@ if (error) {
   }, [page, session, search]);
 
  return (
-  <div className="min-h-screen bg-linear-to-bl from-blue-200 via-blue-300 to-blue-400 p-6 flex justify-center">
+  <div className="min-h-screen bg-linear-to-tl from-blue-200 via-blue-300 to-blue-400 p-6 flex justify-center">
     <div className="w-full max-w-3xl">
 
       
