@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "task-manager": {
+      "command": "npm",
+      "args": ["run", "mcp"]
+    }
+  }
+}
