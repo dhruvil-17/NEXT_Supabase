@@ -158,20 +158,21 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent className="space-y-4 pt-0">
+            {/* Crystal-clear notification alert */}
             {statusMessage && (
               <div
-                className={`flex items-start gap-2.5 p-3 rounded-xl text-xs font-medium border ${
+                className={`flex items-start gap-3 p-3.5 rounded-xl text-xs font-medium border leading-relaxed shadow-2xs transition-all ${
                   statusMessage.type === "error"
-                    ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/50"
-                    : "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60"
+                    ? "bg-red-50 text-red-950 border-red-300 dark:bg-red-950/80 dark:text-red-100 dark:border-red-800"
+                    : "bg-emerald-50 text-emerald-950 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-100 dark:border-emerald-700"
                 }`}
               >
                 {statusMessage.type === "error" ? (
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600 dark:text-red-300" />
                 ) : (
-                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-700 dark:text-emerald-300" />
                 )}
-                <div className="flex-1">{statusMessage.text}</div>
+                <div className="flex-1 font-semibold">{statusMessage.text}</div>
               </div>
             )}
 

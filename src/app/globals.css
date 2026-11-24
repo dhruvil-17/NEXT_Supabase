@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
   --color-background: var(--background);
@@ -30,7 +32,8 @@
   --card-foreground: #141c18;
   --popover: #ffffff;
   --popover-foreground: #141c18;
-  --primary: #15803d; /* Forest Emerald Green */
+  --primary: #15803d;
+  /* Forest Emerald Green */
   --primary-foreground: #ffffff;
   --secondary: #f2f7f4;
   --secondary-foreground: #14532d;
